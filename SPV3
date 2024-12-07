@@ -48,6 +48,32 @@ local function blankfunction(...)
     return ...
 end
 
+local function logRemote(remote, method, args)
+    if not blocklist[remote] then
+        local logData = {
+            remote = remote,
+            method = method, 
+            args = args,
+            timestamp = tick()
+        }
+        table.insert(logs, 1, logData) -- Insert at start of logs
+        
+        -- Update UI elements
+        if Last then Last.Text = remote.Name end
+        if Total then Total.Text = tostring(#logs) end
+        
+        -- Create new remote button
+        local clone = RBTN:Clone()
+        clone.Parent = Remotes
+        clone.RemoteName.Text = remote.Name
+        clone.ID.Text = tostring(#logs)
+        clone.MouseButton1Click:Connect(function()
+            selected = logData
+            updateCodeBox()
+        end)
+    end
+end
+
 local get_thread_identity = (syn and syn.get_thread_identity) or getidentity or getthreadidentity
 local set_thread_identity = (syn and syn.set_thread_identity) or setidentity
 local islclosure = islclosure or is_l_closure
@@ -84,9 +110,7 @@ mt.__namecall = newcclosure(function(self, ...)
     local args = {...}
     
     if method == "FireServer" or method == "InvokeServer" then
-        -- Skip if remote is blacklisted/blocked
         if not blocklist[self] and not blacklist[self] then
-            -- Create log entry
             local log = {
                 remote = self,
                 method = method,
@@ -94,22 +118,11 @@ mt.__namecall = newcclosure(function(self, ...)
                 timestamp = tick(),
                 caller = getcallingscript()
             }
-            
-            -- Add to logs table
             table.insert(logs, 1, log)
-            
-            -- Update remote count
             remotes_fired = remotes_fired + 1
+            if Last then Last.Text = self.Name end
+            if Total then Total.Text = tostring(remotes_fired) end
             
-            -- Update UI elements
-            if Last then
-                Last.Text = self.Name
-            end
-            if Total then 
-                Total.Text = tostring(remotes_fired)
-            end
-            
-            -- Create new remote button in UI
             local clone = RBTN:Clone()
             clone.Parent = Remotes
             clone.RemoteName.Text = self.Name
@@ -120,7 +133,6 @@ mt.__namecall = newcclosure(function(self, ...)
             end)
         end
     end
-    
     return oldNamecall(self, ...)
 end)
 
